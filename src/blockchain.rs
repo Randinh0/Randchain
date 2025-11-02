@@ -2,9 +2,10 @@ use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Blockchain {
-    chain: Vec<Block>,
-    transactions: Vec<Transaction>,
+    pub chain: Vec<Block>,
+    pub transactions: Vec<Transaction>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,6 +25,13 @@ pub struct Transaction {
     pub amount: f64,
 }
 
+pub struct Wallet {
+    pub private_key: String,
+    pub public_key: String,
+    pub address: String,
+}
+
+
 impl Blockchain {
     pub fn new() -> Self {
         let mut blockchain = Blockchain { chain: Vec::new() , transactions: Vec::new()};
@@ -37,6 +45,10 @@ impl Blockchain {
         };
         blockchain.create_block(block);
         blockchain
+    }
+
+    pub fn len(&self) -> usize {
+        self.chain.len()
     }
 
     fn create_block(&mut self, block: Block) -> &Block {
