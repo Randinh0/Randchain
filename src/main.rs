@@ -115,3 +115,8 @@ async fn chain(State(state): State<AppState>) -> Json<Blockchain> {
     let node = state.lock().await;
     Json(node.get_blockchain())
 }
+
+async fn connect_node(State(state): State<AppState>, Json(node): Json<String>) -> Json<bool> {
+    let mut node = state.lock().await;
+    Json(node.connect_node(node).await)
+}

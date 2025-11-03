@@ -2,6 +2,9 @@ use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const COINBASE_SENDER: &str = "0";
+const COINBASE_AMOUNT: f64 = 1.0;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Blockchain {
     pub chain: Vec<Block>,
@@ -24,13 +27,6 @@ pub struct Transaction {
     pub recipient: String,
     pub amount: f64,
 }
-
-pub struct Wallet {
-    pub private_key: String,
-    pub public_key: String,
-    pub address: String,
-}
-
 
 impl Blockchain {
     pub fn new() -> Self {
@@ -116,20 +112,55 @@ impl Blockchain {
                 return false;
             }
 
+            // Validación de coinbase: exactamente 1 por bloque (excepto génesis) y cantidad esperada
+            let coinbase_count = current_block
+                .transactions
+                .iter()
+                .filter(|t| t.sender == COINBASE_SENDER)
+                .count();
+            if coinbase_count != 1 {
+                return false;
+            }
+            if let Some(cb) = current_block
+                .transactions
+                .iter()
+                .find(|t| t.sender == COINBASE_SENDER)
+            {
+                if cb.amount != COINBASE_AMOUNT {
+                    return false;
+                }
+            }
+
             i += 1;
         }
         true
     }
-    pub fn mine_block(&mut self){
+    pub fn mine_block(&mut self,node_adress: String){
+        self.add_transaction(Transaction{sender: "0".to_string(), recipient: node_adress, amount: 1.0});
         let block =self.proof_of_work();
         self.create_block(block);
+        self.transactions.clear();
         println!("Block mined: {} ", Blockchain::hash(self.get_previous_block()));
     }
     pub fn add_transaction(&mut self, transaction: Transaction)-> u32 {
+        let index_next = { let previous = self.get_previous_block(); previous.index + 1 };
+        // Validaciones de campos
+        if transaction.sender.trim().is_empty() || transaction.recipient.trim().is_empty() {
+            println!("Invalid transaction: sender/recipient vacíos");
+            return index_next;
+        }
+        if !transaction.amount.is_finite() || transaction.amount <= 0.0 {
+            println!("Invalid transaction: amount debe ser positivo y finito");
+            return index_next;
+        }
+        if transaction.sender == COINBASE_SENDER {
+            println!("Invalid transaction: coinbase solo se añade al minado");
+            return index_next;
+        }
+
         self.transactions.push(transaction);
-        let previous_block = self.get_previous_block();
-        println!("Transaction added: {} ", previous_block.index + 1);
-        previous_block.index + 1
+        println!("Transaction added: {} ", index_next);
+        index_next
     }
 
 }

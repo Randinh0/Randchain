@@ -40,8 +40,18 @@ impl Node {
             false
         }
     }
-    pub async fn mine_block(&mut self) -> Block {
-        self.blockchain.mine_block();
+    pub async fn connect_node(&mut self,node: String) -> bool{
+        let url = format!("http://{}/chain", node);
+            if let Ok(response) = reqwest::get(url).await {
+                if response.status().is_success() {
+                    self.neighbor_nodes.insert(node);
+                    return true;
+                }
+            }
+            false
+    }
+    pub async fn mine_block(&mut self,node_adress: String) -> Block {
+        self.blockchain.mine_block(node_adress);
         self.resolve_conflicts().await;
         let new_block = self.blockchain.get_previous_block().clone();
         new_block
@@ -55,5 +65,9 @@ impl Node {
 
     pub fn get_blockchain(&self) -> Blockchain {
         self.blockchain.clone()
+    }
+
+    pub fn add_neighbor(&mut self, node: String) {
+        self.neighbor_nodes.insert(node);
     }
 }
