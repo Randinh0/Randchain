@@ -1,7 +1,13 @@
 mod blockchain;
 mod node;
-use crate::blockchain::{Blockchain, Block, Transaction};
+mod wallet;
+mod transaction;
+
+use crate::blockchain::{Blockchain, Block};
+use crate::wallet::Wallet;
 use crate::node::Node;
+use crate::transaction::Transaction;
+
 use axum::{routing::{post, get}, Router, extract::State, Json};
 use std::net::SocketAddr;
 use std::collections::HashSet;
@@ -46,6 +52,7 @@ async fn main() {
         .route("/resolve_conflicts", get(resolve_conflicts))
         .route("/chain", get(chain))
         .route("/add_transaction", post(add_transaction))
+        .route("/connect_node", post(connect_node))
         .with_state(state_a.clone());
 
     let app_b = Router::new()
@@ -53,6 +60,7 @@ async fn main() {
         .route("/resolve_conflicts", get(resolve_conflicts))
         .route("/chain", get(chain))
         .route("/add_transaction", post(add_transaction))
+        .route("/connect_node", post(connect_node))
         .with_state(state_b.clone());
 
     let app_c = Router::new()
@@ -60,6 +68,7 @@ async fn main() {
         .route("/resolve_conflicts", get(resolve_conflicts))
         .route("/chain", get(chain))
         .route("/add_transaction", post(add_transaction))
+        .route("/connect_node", post(connect_node))
         .with_state(state_c.clone());
 
     // Listeners
@@ -91,7 +100,7 @@ async fn main() {
 
 async fn mine(State(state): State<AppState>) -> Json<Block> {
     let mut node = state.lock().await;
-    let new_block = node.mine_block().await;
+    let new_block = node.mine_block("juan".to_string()).await;
     Json(new_block)
 }
 
@@ -116,7 +125,15 @@ async fn chain(State(state): State<AppState>) -> Json<Blockchain> {
     Json(node.get_blockchain())
 }
 
-async fn connect_node(State(state): State<AppState>, Json(node): Json<String>) -> Json<bool> {
+#[derive(serde::Deserialize)]
+struct ConnectReq { address: String }
+
+async fn connect_node(State(state): State<AppState>, Json(req): Json<ConnectReq>) -> Json<bool> {
     let mut node = state.lock().await;
-    Json(node.connect_node(node).await)
+    Json(node.connect_node(req.address).await)
+}
+
+async fn create_wallet() -> Json<Wallet> {
+    let wallet = Wallet::new();
+    Json(wallet)
 }

@@ -2,8 +2,12 @@ use sha2::{Sha256, Digest};
 use serde::{Serialize, Deserialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::transaction::Transaction;
+
 const COINBASE_SENDER: &str = "0";
-const COINBASE_AMOUNT: f64 = 1.0;
+const COINBASE_AMOUNT: u128 = 1;
+const CHAIN_ID: u32 = 1;
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Blockchain {
@@ -19,13 +23,6 @@ pub struct Block {
     pub proof: u64,
     pub previous_hash: String,
     pub transactions: Vec<Transaction>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Transaction {
-    pub sender: String,
-    pub recipient: String,
-    pub amount: f64,
 }
 
 impl Blockchain {
@@ -136,7 +133,16 @@ impl Blockchain {
         true
     }
     pub fn mine_block(&mut self,node_adress: String){
-        self.add_transaction(Transaction{sender: "0".to_string(), recipient: node_adress, amount: 1.0});
+        // Incluir coinbase directamente en el conjunto de transacciones del bloque a minar
+        self.transactions.push(Transaction{
+            sender: "0".to_string(),
+            recipient: node_adress,
+            amount: COINBASE_AMOUNT,
+            nonce: 0,
+            chain_id: CHAIN_ID,
+            public_key: None,
+            signature: None,
+        });
         let block =self.proof_of_work();
         self.create_block(block);
         self.transactions.clear();
@@ -149,8 +155,8 @@ impl Blockchain {
             println!("Invalid transaction: sender/recipient vacíos");
             return index_next;
         }
-        if !transaction.amount.is_finite() || transaction.amount <= 0.0 {
-            println!("Invalid transaction: amount debe ser positivo y finito");
+        if transaction.amount == 0 {
+            println!("Invalid transaction: amount debe ser > 0");
             return index_next;
         }
         if transaction.sender == COINBASE_SENDER {
